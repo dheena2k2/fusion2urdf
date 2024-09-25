@@ -9,7 +9,7 @@ import adsk, adsk.core, adsk.fusion
 import os.path, re
 from xml.etree import ElementTree
 from xml.dom import minidom
-from distutils.dir_util import copy_tree
+import shutil  # Replaced distutils with shutil
 import fileinput
 import sys
 
@@ -26,23 +26,23 @@ def copy_occs(root):
         transform = adsk.core.Matrix3D.create()
 
         # Create new components from occs
-        # This support even when a component has some occses.
+        # This supports even when a component has some occurrences.
 
-        new_occs = allOccs.addNewComponent(transform)  # this create new occs
+        new_occs = allOccs.addNewComponent(transform)  # this creates new occs
         if occs.component.name == 'base_link':
             occs.component.name = 'old_component'
             new_occs.component.name = 'base_link'
         else:
             new_occs.component.name = re.sub('[ :()]', '_', occs.name)
-        new_occs = allOccs.item((allOccs.count-1))
+        new_occs = allOccs.item((allOccs.count - 1))
         for i in range(bodies.count):
             body = bodies.item(i)
             body.copyToComponent(new_occs)
 
     allOccs = root.occurrences
     oldOccs = []
-    coppy_list = [occs for occs in allOccs]
-    for occs in coppy_list:
+    copy_list = [occs for occs in allOccs]
+    for occs in copy_list:
         if occs.bRepBodies.count > 0:
             copy_body(allOccs, occs)
             oldOccs.append(occs)
@@ -53,7 +53,7 @@ def copy_occs(root):
 
 def export_stl(design, save_dir, components):
     """
-    export stl files into "sace_dir/"
+    export stl files into "save_dir/"
 
 
     Parameters
@@ -67,8 +67,10 @@ def export_stl(design, save_dir, components):
     # create a single exportManager instance
     exportMgr = design.exportManager
     # get the script location
-    try: os.mkdir(save_dir + '/meshes')
-    except: pass
+    try:
+        os.mkdir(save_dir + '/meshes')
+    except:
+        pass
     scriptDir = save_dir + '/meshes'
     # export the occurrence one by one in the component to a specified file
     for component in components:
@@ -82,11 +84,11 @@ def export_stl(design, save_dir, components):
                     stlExportOptions = exportMgr.createSTLExportOptions(occ, fileName)
                     stlExportOptions.sendToPrintUtility = False
                     stlExportOptions.isBinaryFormat = True
-                    # options are .MeshRefinementLow .MeshRefinementMedium .MeshRefinementHigh
+                    # options are .MeshRefinementLow, .MeshRefinementMedium, .MeshRefinementHigh
                     stlExportOptions.meshRefinement = adsk.fusion.MeshRefinementSettings.MeshRefinementLow
                     exportMgr.execute(stlExportOptions)
                 except:
-                    print('Component ' + occ.component.name + 'has something wrong.')
+                    print('Component ' + occ.component.name + ' has something wrong.')
 
 
 def file_dialog(ui):
@@ -106,7 +108,7 @@ def file_dialog(ui):
 
 def origin2center_of_mass(inertia, center_of_mass, mass):
     """
-    convert the moment of the inertia about the world coordinate into
+    convert the moment of inertia about the world coordinate into
     that about center of mass coordinate
 
 
@@ -123,9 +125,9 @@ def origin2center_of_mass(inertia, center_of_mass, mass):
     x = center_of_mass[0]
     y = center_of_mass[1]
     z = center_of_mass[2]
-    translation_matrix = [y**2+z**2, x**2+z**2, x**2+y**2,
-                         -x*y, -y*z, -x*z]
-    return [ round(i - mass*t, 6) for i, t in zip(inertia, translation_matrix)]
+    translation_matrix = [y**2 + z**2, x**2 + z**2, x**2 + y**2,
+                         -x * y, -y * z, -x * z]
+    return [round(i - mass * t, 6) for i, t in zip(inertia, translation_matrix)]
 
 
 def prettify(elem):
@@ -138,36 +140,51 @@ def prettify(elem):
 
     Returns
     ----------
-    pretified xml : str
+    prettified xml : str
     """
     rough_string = ElementTree.tostring(elem, 'utf-8')
     reparsed = minidom.parseString(rough_string)
     return reparsed.toprettyxml(indent="  ")
 
+
 def create_package(package_name, save_dir, package_dir):
-    try: os.mkdir(save_dir + '/launch')
-    except: pass
+    try:
+        os.mkdir(save_dir + '/launch')
+    except:
+        pass
 
-    try: os.mkdir(save_dir + '/urdf')
-    except: pass
+    try:
+        os.mkdir(save_dir + '/urdf')
+    except:
+        pass
 
-    try: os.mkdir(save_dir + '/config')
-    except: pass
+    try:
+        os.mkdir(save_dir + '/config')
+    except:
+        pass
 
-    try: os.mkdir(save_dir + '/' +package_name)
-    except: pass
+    try:
+        os.mkdir(save_dir + '/' + package_name)
+    except:
+        pass
     with open(os.path.join(save_dir, package_name, '__init__.py'), 'w'):
         pass
 
-    try: os.mkdir(save_dir + '/resource')
-    except: pass
+    try:
+        os.mkdir(save_dir + '/resource')
+    except:
+        pass
     with open(os.path.join(save_dir, 'resource', package_name), 'w'):
         pass
 
-    try: os.mkdir(save_dir + '/test')
-    except: pass
+    try:
+        os.mkdir(save_dir + '/test')
+    except:
+        pass
 
-    copy_tree(package_dir, save_dir)
+    # Refactor: using shutil.copytree in place of distutils.copy_tree
+    shutil.copytree(package_dir, save_dir, dirs_exist_ok=True)  # Allows overwriting existing directories
+
 
 def update_setup_py(save_dir, package_name):
     file_name = save_dir + '/setup.py'
@@ -177,6 +194,7 @@ def update_setup_py(save_dir, package_name):
             sys.stdout.write("package_name = '" + package_name + "'\n")
         else:
             sys.stdout.write(line)
+
 
 def update_setup_cfg(save_dir, package_name):
     file_name = save_dir + '/setup.cfg'
@@ -188,6 +206,7 @@ def update_setup_cfg(save_dir, package_name):
             sys.stdout.write("install-scripts=$base/lib/" + package_name + "\n")
         else:
             sys.stdout.write(line)
+
 
 def update_package_xml(save_dir, package_name):
     file_name = save_dir + '/package.xml'
