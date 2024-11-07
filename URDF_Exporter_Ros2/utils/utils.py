@@ -4,14 +4,39 @@ Created on Sun May 12 19:15:34 2019
 
 @author: syuntoku
 """
-
+import sys
 import adsk, adsk.core, adsk.fusion
 import os.path, re
 from xml.etree import ElementTree
 from xml.dom import minidom
-from distutils.dir_util import copy_tree
+# from distutils.dir_util import copy_tree
+# from shutil import copytree as copy_tree
 import fileinput
-import sys
+
+import shutil
+import os
+
+
+def copy_tree(src, dst):
+    # 如果目标目录不存在，创建目标目录
+    if not os.path.exists(dst):
+        os.makedirs(dst)
+
+    # 遍历源目录中的文件和文件夹
+    for item in os.listdir(src):
+        s = os.path.join(src, item)
+        d = os.path.join(dst, item)
+        if os.path.isdir(s):
+            # 递归复制子目录
+            copy_tree(s, d)
+        else:
+            # 复制文件
+            shutil.copy2(s, d)
+
+
+# 使用示例
+# copy_tree('source_folder', 'destination_folder')
+
 
 def copy_occs(root):
     """
